@@ -1,0 +1,604 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group.name }} - Group Project Manager{% endblock %}
+
+{% block content %}
+<div class="group-detail-container">
+    <div class="group-detail-header">
+        <div>
+            <h1>{{ group.name }}</h1>
+            {% if group.description %}
+                <p class="group-description">{{ group.description }}</p>
+            {% endif %}
+            <p class="group-meta-info">Created on {{ group.created_at.strftime('%B %d, %Y at %I:%M %p') }} by {{ group.created_by.firstname }} {{ group.created_by.lastname }}</p>
+        </div>
+        <div class="group-actions">
+            <a href="{{ url_for('groups.groups_list') }}" class="btn btn-secondary">Back to Groups</a>
+            {% if is_creator %}
+                <button onclick="confirmDelete()" class="btn btn-danger">Delete Group</button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="group-sections">
+        <!-- Members Section -->
+        <section class="group-section">
+            <div class="section-header">
+                <h2>Members ({{ group.members|length }})</h2>
+                <button onclick="toggleInviteForm()" class="btn btn-primary" style="width: auto; padding: 0.5rem 1rem;">Invite Member</button>
+            </div>
+            <div id="invite-form" style="display: none; margin-bottom: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+                <form method="POST" action="{{ url_for('groups.invite_member', group_id=group.group_id) }}">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="email" name="email" placeholder="Enter email address" required 
+                               class="form-input" style="flex: 1;">
+                        <button type="submit" class="btn btn-primary" style="width: auto;">Send Invite</button>
+                        <button type="button" onclick="toggleInviteForm()" class="btn btn-secondary" style="width: auto;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+            <div class="members-list">
+                {% for member in group.members %}
+                    <div class="member-item">
+                        <div class="member-info">
+                            <strong>{{ member.firstname }} {{ member.lastname }}</strong>
+                            <span class="member-email">({{ member.email }})</span>
+                            {% if member.id == group.created_by.id %}
+                                <span class="member-badge">Creator</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+        
+        <!-- Tasks Section -->
+        <section class="group-section">
+            <div class="section-header">
+                <h2>Tasks ({{ tasks|length }})</h2>
+                <a href="{{ url_for('tasks.assign_task', group_id=group.group_id) }}" class="btn btn-primary" style="width: auto; padding: 0.5rem 1rem;">Assign Task</a>
+            </div>
+            {% if tasks|length == 0 %}
+                <p class="empty-state">No tasks in this group yet.</p>
+            {% else %}
+                <div class="tasks-list">
+                    {% for task in tasks %}
+                        <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="task-item-link">
+                            <div class="task-item">
+                                <div class="task-header">
+                                    <h3>{{ task.title }}</h3>
+                                    <span class="task-status status-{{ task.status }}">{{ task.status|replace('_', ' ')|title }}</span>
+                                </div>
+                                {% if task.description %}
+                                    <p class="task-description">{{ task.description }}</p>
+                                {% endif %}
+                                <div class="task-meta">
+                                    <span>Assigned to: {{ task.assigned_to.firstname }} {{ task.assigned_to.lastname }}</span>
+                                    {% if task.due_date %}
+                                        <span>Due: {{ task.due_date.strftime('%B %d, %Y') }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+        
+        <!-- Subtasks Section -->
+        <section class="group-section">
+            <h2>Subtasks ({{ subtasks|length }})</h2>
+            {% if subtasks|length == 0 %}
+                <p class="empty-state">No subtasks in this group yet.</p>
+            {% else %}
+                <div class="subtasks-list">
+                    {% for subtask in subtasks %}
+                        <div class="subtask-item">
+                            <div class="subtask-header">
+                                <h4>{{ subtask.title }}</h4>
+                                <span class="subtask-status status-{{ subtask.status }}">{{ subtask.status|replace('_', ' ')|title }}</span>
+                            </div>
+                            {% if subtask.description %}
+                                <p class="subtask-description">{{ subtask.description }}</p>
+                            {% endif %}
+                            <div class="subtask-meta">
+                                <span>Task: {{ subtask.task.title }}</span>
+                                <span>Assigned to: {{ subtask.assigned_to.firstname }} {{ subtask.assigned_to.lastname }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+        
+        <!-- Chat Section -->
+        <section class="group-section">
+            <h2>Group Chat</h2>
+            <div class="chat-container">
+                <div id="chat-messages" class="chat-messages">
+                    {% if chat_messages|length == 0 %}
+                        <p class="empty-state">No messages yet. Start the conversation!</p>
+                    {% else %}
+                        {% for msg in chat_messages %}
+                            <div class="chat-message" data-message-id="{{ msg.id }}">
+                                <div class="chat-message-header">
+                                    <strong class="chat-message-sender">{{ msg.user.firstname }} {{ msg.user.lastname }}</strong>
+                                    <span class="chat-message-time">{{ msg.timestamp.strftime('%I:%M %p') }}</span>
+                                </div>
+                                <div class="chat-message-text">{{ msg.message }}</div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="Type a message..." class="form-input">
+                    <button id="chat-send-btn" class="btn btn-primary">Send</button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 8px; max-width: 500px; margin: 2rem;">
+        <h2>Delete Group</h2>
+        <p>Are you sure you want to delete "{{ group.name }}"? This action cannot be undone.</p>
+        <p style="color: #dc3545; font-weight: bold; margin-top: 1rem;">All tasks, subtasks, and chat messages in this group will be permanently deleted.</p>
+        <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
+            <button onclick="closeDeleteModal()" class="btn btn-secondary" style="width: auto;">Cancel</button>
+            <form method="POST" action="{{ url_for('groups.delete_group', group_id=group.group_id) }}" style="display: inline;">
+                <button type="submit" class="btn btn-danger">Delete Group</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+function confirmDelete() {
+    document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+}
+
+function toggleInviteForm() {
+    const form = document.getElementById('invite-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close modal if clicked outside
+document.getElementById('delete-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeDeleteModal();
+    }
+});
+
+// SocketIO Chat Functionality
+const groupId = '{{ group.group_id }}';
+const socket = io();
+
+// Join group room when page loads
+socket.on('connect', function() {
+    socket.emit('join_group', { group_id: groupId });
+});
+
+// Leave group room when page unloads
+window.addEventListener('beforeunload', function() {
+    socket.emit('leave_group', { group_id: groupId });
+});
+
+// Handle receiving new messages
+socket.on('message_received', function(data) {
+    const chatMessages = document.getElementById('chat-messages');
+    
+    // Remove empty state message if present
+    const emptyState = chatMessages.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    // Create message element
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message';
+    messageDiv.setAttribute('data-message-id', data.message_id);
+    
+    const timestamp = new Date(data.timestamp);
+    const timeString = timestamp.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+    
+    messageDiv.innerHTML = `
+        <div class="chat-message-header">
+            <strong class="chat-message-sender">${data.user_name}</strong>
+            <span class="chat-message-time">${timeString}</span>
+        </div>
+        <div class="chat-message-text">${escapeHtml(data.message)}</div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    scrollChatToBottom();
+});
+
+// Handle errors
+socket.on('error', function(data) {
+    console.error('SocketIO error:', data.message);
+    alert('Error: ' + data.message);
+});
+
+// Send message function
+function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) {
+        return;
+    }
+    
+    // Disable input while sending
+    input.disabled = true;
+    document.getElementById('chat-send-btn').disabled = true;
+    
+    socket.emit('send_message', {
+        group_id: groupId,
+        message: message
+    }, function(response) {
+        // Re-enable input after sending
+        input.disabled = false;
+        document.getElementById('chat-send-btn').disabled = false;
+        input.value = '';
+        input.focus();
+    });
+}
+
+// Send message on button click
+document.getElementById('chat-send-btn').addEventListener('click', sendMessage);
+
+// Send message on Enter key
+document.getElementById('chat-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+// Scroll chat to bottom
+function scrollChatToBottom() {
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Scroll to bottom on page load
+window.addEventListener('load', function() {
+    scrollChatToBottom();
+});
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// Real-time Subtask Status Updates
+socket.on('subtask_status_changed', function(data) {
+    // Reload the page to show updated subtask statuses
+    // In a more sophisticated implementation, we could update specific elements
+    if (data.group_id === groupId) {
+        location.reload();
+    }
+});
+
+// Real-time Task Status Updates
+socket.on('task_status_changed', function(data) {
+    // Reload the page to show updated task statuses
+    if (data.group_id === groupId) {
+        location.reload();
+    }
+});
+
+// Real-time Progress Updates
+socket.on('progress_updated', function(data) {
+    // Reload the page to show updated progress
+    if (data.group_id === groupId) {
+        location.reload();
+    }
+});
+</script>
+
+<style>
+.group-detail-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.group-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.group-detail-header h1 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.group-description {
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.group-meta-info {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.group-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.group-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.group-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-header h2 {
+    color: #2c3e50;
+    margin: 0;
+}
+
+.members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.member-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.member-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.member-email {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.member-badge {
+    background: #2c3e50;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.tasks-list, .subtasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.task-item-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.task-item-link:hover .task-item {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-color: #2c3e50;
+}
+
+.task-item, .subtask-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer;
+}
+
+.task-header, .subtask-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.task-header h3, .subtask-header h4 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.task-status, .subtask-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.status-pending, .status-not_started {
+    background: #ffc107;
+    color: #000;
+}
+
+.status-in_progress {
+    background: #17a2b8;
+    color: white;
+}
+
+.status-completed, .status-done {
+    background: #28a745;
+    color: white;
+}
+
+.task-description, .subtask-description {
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.task-meta, .subtask-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.chat-container {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.chat-messages {
+    height: 300px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chat-message {
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border-left: 3px solid #2c3e50;
+}
+
+.chat-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.chat-message-sender {
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.chat-message-time {
+    color: #888;
+    font-size: 0.75rem;
+}
+
+.chat-message-text {
+    color: #333;
+    font-size: 0.9rem;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.chat-input-container {
+    display: flex;
+    padding: 1rem;
+    border-top: 1px solid #e0e0e0;
+    background: #f8f9fa;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.chat-input-container input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    min-width: 0;
+    width: auto;
+    display: block;
+    background-color: white;
+}
+
+.chat-input-container input:focus {
+    outline: none;
+    border-color: #2c3e50;
+}
+
+.chat-input-container input:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.chat-input-container .btn-primary {
+    width: auto;
+    padding: 0.75rem 1.5rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .group-detail-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .group-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .group-actions .btn {
+        width: 100%;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+</style>
+{% endblock %}
+

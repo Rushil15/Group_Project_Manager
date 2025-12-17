@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Create Group - Group Project Manager{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1>Create New Group</h1>
+        
+        <form method="POST" action="{{ url_for('groups.create_group') }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.name.label(class="form-label") }}
+                {{ form.name(class="form-input") }}
+                {% if form.name.errors %}
+                    <div class="form-errors">
+                        {% for error in form.name.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.description.label(class="form-label") }}
+                {{ form.description(class="form-input", rows="4") }}
+                {% if form.description.errors %}
+                    <div class="form-errors">
+                        {% for error in form.description.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.member_selection.label(class="form-label") }}
+                {{ form.member_selection(class="form-input", placeholder="email@example.com") }}
+                <small style="color: #666; font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+                    Optional: Invite a member by email
+                </small>
+                {% if form.member_selection.errors %}
+                    <div class="form-errors">
+                        {% for error in form.member_selection.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Create Group</button>
+                <a href="{{ url_for('groups.groups_list') }}" class="btn btn-secondary" style="margin-left: 0.5rem; width: auto; background-color: #6c757d;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.form-group .btn {
+    width: auto;
+    display: inline-block;
+}
+</style>
+{% endblock %}
+

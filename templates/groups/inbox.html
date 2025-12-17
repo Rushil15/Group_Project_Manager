@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Inbox - Group Project Manager{% endblock %}
+
+{% block content %}
+<div class="inbox-container">
+    <div class="inbox-header">
+        <h1>Group Invitations</h1>
+        <a href="{{ url_for('groups.groups_list') }}" class="btn btn-secondary">Back to Groups</a>
+    </div>
+    
+    {% if invitations|length == 0 %}
+        <div class="empty-state">
+            <p>You have no pending group invitations.</p>
+        </div>
+    {% else %}
+        <div class="invitations-list">
+            {% for group in invitations %}
+                <div class="invitation-card">
+                    <div class="invitation-content">
+                        <h3>{{ group.name }}</h3>
+                        {% if group.description %}
+                            <p class="invitation-description">{{ group.description }}</p>
+                        {% endif %}
+                        <div class="invitation-meta">
+                            <span>Created by: {{ group.created_by.firstname }} {{ group.created_by.lastname }}</span>
+                            <span>Members: {{ group.members|length }}</span>
+                            <span>Created: {{ group.created_at.strftime('%B %d, %Y') }}</span>
+                        </div>
+                    </div>
+                    <div class="invitation-actions">
+                        <form method="POST" action="{{ url_for('groups.inbox') }}" style="display: inline;">
+                            <input type="hidden" name="group_id" value="{{ group.group_id }}">
+                            <input type="hidden" name="action" value="accept">
+                            <button type="submit" class="btn btn-primary">Accept</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('groups.inbox') }}" style="display: inline;">
+                            <input type="hidden" name="group_id" value="{{ group.group_id }}">
+                            <input type="hidden" name="action" value="reject">
+                            <button type="submit" class="btn btn-secondary">Reject</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.inbox-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.inbox-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.inbox-header h1 {
+    color: #2c3e50;
+    margin: 0;
+}
+
+.invitations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.invitation-card {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.invitation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.invitation-content {
+    flex: 1;
+}
+
+.invitation-content h3 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.invitation-description {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.invitation-meta {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.invitation-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.invitation-actions .btn {
+    width: auto;
+    padding: 0.5rem 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .inbox-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .inbox-header .btn {
+        width: 100%;
+    }
+    
+    .invitation-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .invitation-actions {
+        width: 100%;
+    }
+    
+    .invitation-actions .btn {
+        flex: 1;
+    }
+    
+    .invitation-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+</style>
+{% endblock %}
+

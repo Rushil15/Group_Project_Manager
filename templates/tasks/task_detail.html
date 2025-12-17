@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.title }} - Group Project Manager{% endblock %}
+
+{% block content %}
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<div class="task-detail-container">
+    <div class="task-detail-header">
+        <div>
+            <h1>{{ task.title }}</h1>
+            {% if task.description %}
+                <p class="task-description">{{ task.description }}</p>
+            {% endif %}
+            <div class="task-meta-info">
+                <p><strong>Assigned to:</strong> {{ task.assigned_to.firstname }} {{ task.assigned_to.lastname }}</p>
+                <p><strong>Group:</strong> {{ task.group.name }}</p>
+                {% if task.due_date %}
+                    <p><strong>Due Date:</strong> {{ task.due_date.strftime('%B %d, %Y') }}</p>
+                {% endif %}
+                <p><strong>Status:</strong> <span class="task-status status-{{ task.status }}">{{ task.status|replace('_', ' ')|title }}</span></p>
+                <p><strong>Created:</strong> {{ task.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            </div>
+        </div>
+        <div class="task-actions">
+            <a href="{{ url_for('groups.group_detail', group_id=task.group.group_id) }}" class="btn btn-secondary">Back to Group</a>
+            {% if is_assignee %}
+                {% if task.status != 'completed' %}
+                    <form method="POST" action="{{ url_for('tasks.complete_task', task_id=task.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Mark this task as completed? All subtasks will be marked as done.');">Mark as Completed</button>
+                    </form>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="task-sections">
+        <!-- Subtasks Section -->
+        <section class="task-section">
+            <div class="section-header">
+                <h2>Subtasks ({{ subtasks|length }})</h2>
+                {% if is_assignee %}
+                    <a href="{{ url_for('tasks.create_subtask', task_id=task.id) }}" class="btn btn-primary" style="width: auto; padding: 0.5rem 1rem;">Create Subtask</a>
+                {% endif %}
+            </div>
+            {% if subtasks|length == 0 %}
+                <p class="empty-state">No subtasks yet.{% if is_assignee %} Create one to get started!{% endif %}</p>
+            {% else %}
+                <div class="subtasks-list">
+                    {% for subtask in subtasks %}
+                        <div class="subtask-item" data-subtask-id="{{ subtask.id }}">
+                            <div class="subtask-header">
+                                <h4>{{ subtask.title }}</h4>
+                                {% if is_assignee %}
+                                    <select class="subtask-status-select" data-subtask-id="{{ subtask.id }}">
+                                        <option value="not_started" {% if subtask.status == 'not_started' %}selected{% endif %}>Not Started</option>
+                                        <option value="in_progress" {% if subtask.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                        <option value="done" {% if subtask.status == 'done' %}selected{% endif %}>Done</option>
+                                    </select>
+                                {% else %}
+                                    <span class="subtask-status status-{{ subtask.status }}">{{ subtask.status|replace('_', ' ')|title }}</span>
+                                {% endif %}
+                            </div>
+                            {% if subtask.description %}
+                                <p class="subtask-description">{{ subtask.description }}</p>
+                            {% endif %}
+                            <div class="subtask-meta">
+                                <span>Created: {{ subtask.created_at.strftime('%B %d, %Y') }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+
+<style>
+.task-detail-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.task-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.task-detail-header h1 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.task-description {
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+.task-meta-info {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.task-meta-info p {
+    margin: 0.5rem 0;
+}
+
+.task-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-direction: column;
+}
+
+.task-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.task-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-header h2 {
+    color: #2c3e50;
+    margin: 0;
+}
+
+.subtasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.subtask-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+}
+
+.subtask-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.subtask-header h4 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.subtask-status-select {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.subtask-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.status-pending, .status-not_started {
+    background: #ffc107;
+    color: #000;
+}
+
+.status-in_progress {
+    background: #17a2b8;
+    color: white;
+}
+
+.status-completed, .status-done {
+    background: #28a745;
+    color: white;
+}
+
+.subtask-description {
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.subtask-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+@media (max-width: 768px) {
+    .task-detail-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .task-actions {
+        width: 100%;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+</style>
+
+<script>
+// SocketIO connection for real-time updates
+const socket = io();
+const taskGroupId = '{{ task.group.group_id }}';
+
+// Join group room when page loads
+socket.on('connect', function() {
+    socket.emit('join_group', { group_id: taskGroupId });
+});
+
+// Leave group room when page unloads
+window.addEventListener('beforeunload', function() {
+    socket.emit('leave_group', { group_id: taskGroupId });
+});
+
+// Handle subtask status updates
+document.querySelectorAll('.subtask-status-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+        const subtaskId = this.getAttribute('data-subtask-id');
+        const newStatus = this.value;
+        
+        this.disabled = true;
+        
+        fetch(`/subtask/${subtaskId}/update_status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating subtask status: ' + (data.error || 'Unknown error'));
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating subtask status');
+            location.reload();
+        });
+    });
+});
+
+// Real-time Subtask Status Updates
+socket.on('subtask_status_changed', function(data) {
+    if (data.group_id === taskGroupId) {
+        location.reload();
+    }
+});
+
+// Real-time Task Status Updates
+socket.on('task_status_changed', function(data) {
+    if (data.group_id === taskGroupId && data.task_id === '{{ task.id }}') {
+        location.reload();
+    }
+});
+</script>
+{% endblock %}
+

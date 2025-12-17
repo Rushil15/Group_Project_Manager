@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Task - Group Project Manager{% endblock %}
+
+{% block content %}
+<div class="task-form-container">
+    <div class="task-form-header">
+        <h1>Assign Task</h1>
+        <p class="group-info">Group: {{ group.name }}</p>
+        <a href="{{ url_for('groups.group_detail', group_id=group.group_id) }}" class="btn btn-secondary">Back to Group</a>
+    </div>
+    
+    <div class="task-form-card">
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                {{ form.title.label(class="form-label") }}
+                {{ form.title(class="form-input") }}
+                {% if form.title.errors %}
+                    <div class="form-errors">
+                        {% for error in form.title.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.description.label(class="form-label") }}
+                {{ form.description(class="form-input", rows="4") }}
+                {% if form.description.errors %}
+                    <div class="form-errors">
+                        {% for error in form.description.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.assign_to.label(class="form-label") }}
+                {{ form.assign_to(class="form-input") }}
+                {% if form.assign_to.errors %}
+                    <div class="form-errors">
+                        {% for error in form.assign_to.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                {{ form.due_date.label(class="form-label") }}
+                {{ form.due_date(class="form-input") }}
+                {% if form.due_date.errors %}
+                    <div class="form-errors">
+                        {% for error in form.due_date.errors %}
+                            <span class="error-message">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Assign Task</button>
+                <a href="{{ url_for('groups.group_detail', group_id=group.group_id) }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.task-form-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.task-form-header {
+    margin-bottom: 2rem;
+}
+
+.task-form-header h1 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.group-info {
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.task-form-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.form-actions .btn {
+    width: auto;
+    flex: 1;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+</style>
+{% endblock %}
+

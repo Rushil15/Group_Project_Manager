@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Group Project Manager{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h1>Welcome, {{ user.firstname }} {{ user.lastname }}!</h1>
+    
+    <div class="dashboard-header">
+        <h2>Your Groups</h2>
+        {% if groups|length == 0 %}
+            <p class="empty-state">You are not a member of any groups yet.</p>
+        {% else %}
+            <div class="groups-list">
+                {% for group in groups %}
+                    <a href="{{ url_for('groups.group_detail', group_id=group.group_id) }}" class="group-card-link">
+                        <div class="group-card">
+                            <h3>{{ group.name }}</h3>
+                            {% if group.description %}
+                                <p class="group-description">{{ group.description }}</p>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="progress-section">
+        <h2>Progress Tracking</h2>
+        {% if progress_data|length == 0 %}
+            <p class="empty-state">No tasks to track progress on yet.</p>
+        {% else %}
+            <div class="progress-bars-container">
+                {% for item in progress_data %}
+                    <div class="progress-item" 
+                         data-group-id="{{ item.group.group_id }}"
+                         data-task-id="{{ item.task.id }}"
+                         data-groupmate-id="{{ item.groupmate.id }}">
+                        <div class="progress-label">
+                            <strong>Group:</strong> {{ item.group.name }} | 
+                            <strong>Assigned to:</strong> {{ item.groupmate.firstname }} {{ item.groupmate.lastname }} | 
+                            <strong>Task:</strong> {{ item.task.title }} | 
+                            <strong>Progress:</strong> <span class="progress-percentage">{{ item.progress }}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" 
+                                 data-progress="{{ item.progress }}"
+                                 style="width: {{ item.progress }}%">
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.group-card-link {
+    text-decoration: none;
+    color: inherit;
+}
+</style>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+    // Set progress bar colors based on progress value
+    document.addEventListener('DOMContentLoaded', function() {
+        const progressBars = document.querySelectorAll('.progress-bar');
+        progressBars.forEach(function(bar) {
+            const progress = parseFloat(bar.getAttribute('data-progress'));
+            bar.classList.remove('progress-low', 'progress-medium', 'progress-high');
+            
+            if (progress <= 33) {
+                bar.classList.add('progress-low');
+            } else if (progress <= 66) {
+                bar.classList.add('progress-medium');
+            } else {
+                bar.classList.add('progress-high');
+            }
+        });
+    });
+    
+    // Initialize SocketIO connection
+    const socket = io();
+    
+    // Listen for subtask status changes
+    socket.on('subtask_status_changed', function(data) {
+        // Reload the page to update progress (or update specific progress bars)
+        // For now, we'll reload to ensure accuracy
+        location.reload();
+    });
+    
+    // Listen for task status changes
+    socket.on('task_status_changed', function(data) {
+        // Reload the page to update progress
+        location.reload();
+    });
+</script>
+{% endblock %}
+
