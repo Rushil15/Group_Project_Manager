@@ -3,7 +3,6 @@ from flask_socketio import SocketIO
 from mongoengine import connect
 from config import Config
 import os
-import certifi
 
 socketio = SocketIO(cors_allowed_origins="*")
 
@@ -19,11 +18,11 @@ def create_app():
     )
     app.config.from_object(Config)
 
-    # Connect to MongoDB (Atlas with TLS CA file)
+    # Connect to MongoDB Atlas using the connection string in MONGODB_URI.
+    # The URI already specifies TLS/SSL; we rely on the platform's default CA bundle.
     connect(
-        db=app.config["MONGODB_SETTINGS"]["db"],
         host=app.config["MONGODB_SETTINGS"]["host"],
-        tlsCAFile=certifi.where(),
+        db=app.config["MONGODB_SETTINGS"]["db"],
     )
 
     # Initialize SocketIO
