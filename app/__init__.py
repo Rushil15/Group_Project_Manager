@@ -19,10 +19,16 @@ def create_app():
     app.config.from_object(Config)
 
     # Connect to MongoDB Atlas using the connection string in MONGODB_URI.
-    # The URI already specifies TLS/SSL; we rely on the platform's default CA bundle.
+    # We use lazy connection (connect=False) so the actual MongoClient is
+    # created in each worker process after fork, avoiding PyMongo's warning.
+    # Explicitly enable TLS; optionally relax certificate validation for
+    # classroom/demo deployments where CA issues can be problematic.
     connect(
         host=app.config["MONGODB_SETTINGS"]["host"],
         db=app.config["MONGODB_SETTINGS"]["db"],
+        connect=False,
+        tls=True,
+        tlsAllowInvalidCertificates=True,
     )
 
     # Initialize SocketIO
